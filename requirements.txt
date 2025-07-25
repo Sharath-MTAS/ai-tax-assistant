@@ -1,0 +1,7 @@
+streamlit
+streamlit-option-menu
+pandas
+openai
+python-dotenv
+scikit-learn
+xlsxwriter
