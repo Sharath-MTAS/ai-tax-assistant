@@ -278,24 +278,47 @@ if "client_info" not in st.session_state:
     st.session_state.client_info = {"client_name": "", "tax_year": "", "filename": ""}
 
 # 1. Select or Create Client
+# 1. Select or Create Client
 if menu == "Select/Create Client":
     selected_client = st.selectbox("Select Existing Client or Enter New", ["New Client"] + client_list)
+
     if selected_client == "New Client":
         client_name = st.text_input("Enter New Client Name")
         tax_year = st.text_input("Enter Tax Year")
         if st.button("Create Client"):
             filename = f"{client_name}_{tax_year}.json"
+            # Prepare client data dictionary
+            client_data = {}
+            if "mapping_df" in st.session_state:
+                client_data["mapping_df"] = st.session_state.mapping_df.to_dict()
+
             with open(filename, 'w') as f:
-                json.dump({}, f)
-            st.session_state.client_info = {"client_name": client_name, "tax_year": tax_year, "filename": filename}
-            st.success(f"New client created: {filename}")
+                json.dump(client_data, f)
+
+            st.session_state.client_info = {
+                "client_name": client_name,
+                "tax_year": tax_year,
+                "filename": filename
+            }
+
+            if "mapping_df" in st.session_state:
+                st.success(f"✅ New client created and mapping preserved: {filename}")
+            else:
+                st.success(f"✅ New client created: {filename}")
+            st.rerun()
+
     else:
         filename = f"{selected_client}.json"
         with open(filename, 'r') as f:
             client_data = json.load(f)
+
         client_name = selected_client.rsplit("_", 1)[0]
         tax_year = selected_client.rsplit("_", 1)[1]
-        st.session_state.client_info = {"client_name": client_name, "tax_year": tax_year, "filename": filename}
+        st.session_state.client_info = {
+            "client_name": client_name,
+            "tax_year": tax_year,
+            "filename": filename
+        }
 
         if client_data:
             if "tb_df" in client_data:
@@ -304,6 +327,12 @@ if menu == "Select/Create Client":
                 st.session_state.adj_df = pd.DataFrame(client_data["adj_df"])
             if "mapping_df" in client_data:
                 st.session_state.mapping_df = pd.DataFrame(client_data["mapping_df"])
+                st.session_state.mapping_options = sorted(
+                    st.session_state.mapping_df["Tax Line assignments"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
             st.success("Client data loaded successfully")
 
 # Upload TB & Mapping section indentation fix
@@ -395,36 +424,39 @@ if menu == "M-1 Adjustments" and "tb_df" in st.session_state:
 
     # Custom M-1 entry
     st.markdown("### ➕ Add Custom M-1 Adjustment")
-with st.form("custom_m1_form", clear_on_submit=True):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        custom_account = st.text_input("Account")
-    with col2:
-        custom_book = st.number_input("Book Amount", value=0.0)
-    with col3:
-        custom_tax = st.number_input("Tax Amount", value=0.0)
-    custom_type = st.selectbox("Adjustment Type", ["Temporary", "Permanent"])
-    custom_category = st.text_input("M-1 Category", value="Other")
-    submitted = st.form_submit_button("➕ Add Adjustment")
-    if submitted:
-        new_entry = {
-            'Account': custom_account,
-            'Book Amount': custom_book,
-            'Tax Amount': custom_tax,
-            'Adjustment': custom_book - custom_tax,
-            'Adjustment Type': custom_type,
-            'M-1 Category': custom_category
-        }
+    with st.form("custom_m1_form", clear_on_submit=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            custom_account = st.text_input("Account")
+        with col2:
+            custom_book = st.number_input("Book Amount", value=0.0)
+        with col3:
+            custom_tax = st.number_input("Tax Amount", value=0.0)
+        custom_type = st.selectbox("Adjustment Type", ["Temporary", "Permanent"])
+        custom_category = st.text_input("M-1 Category", value="Other")
+        submitted = st.form_submit_button("➕ Add Adjustment")
+        if submitted:
+            new_entry = {
+                'Account': custom_account,
+                'Book Amount': custom_book,
+                'Tax Amount': custom_tax,
+                'Adjustment': custom_book - custom_tax,
+                'Adjustment Type': custom_type,
+                'M-1 Category': custom_category
+            }
 
-        # Append to adj_df if exists or create new
-        if "adj_df" in st.session_state:
-            st.session_state.adj_df = pd.concat([st.session_state.adj_df, pd.DataFrame([new_entry])], ignore_index=True)
-        else:
-            st.session_state.adj_df = pd.DataFrame([new_entry])
+            if "adj_df" in st.session_state:
+                st.session_state.adj_df = pd.concat([st.session_state.adj_df, pd.DataFrame([new_entry])], ignore_index=True)
+            else:
+                st.session_state.adj_df = pd.DataFrame([new_entry])
 
-        auto_save_client_data()
-        st.success("✅ Custom M-1 Adjustment added and saved.")
-        st.rerun()
+            auto_save_client_data()
+            st.success("✅ Custom M-1 Adjustment added and saved.")
+            st.rerun()
+
+    # Final updated view
+    if "adj_df" in st.session_state:
+        st.dataframe(st.session_state.adj_df)
 
 
 # 4. Review/Edit Lacerte Mapping
