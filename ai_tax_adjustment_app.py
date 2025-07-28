@@ -395,33 +395,37 @@ if menu == "M-1 Adjustments" and "tb_df" in st.session_state:
 
     # Custom M-1 entry
     st.markdown("### ➕ Add Custom M-1 Adjustment")
-    with st.form("custom_m1_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            custom_account = st.text_input("Account")
-        with col2:
-            custom_book = st.number_input("Book Amount", value=0.0)
-        with col3:
-            custom_tax = st.number_input("Tax Amount", value=0.0)
-        custom_type = st.selectbox("Adjustment Type", ["Temporary", "Permanent"])
-        custom_category = st.text_input("M-1 Category", value="Other")
-        submitted = st.form_submit_button("Add Custom Entry")
-        if submitted:
-            adj_rows.append({
-                'Account': custom_account,
-                'Book Amount': custom_book,
-                'Tax Amount': custom_tax,
-                'Adjustment': custom_book - custom_tax,
-                'Adjustment Type': custom_type,
-                'M-1 Category': custom_category
-            })
-            st.success("Custom M-1 added!")
+with st.form("custom_m1_form", clear_on_submit=True):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        custom_account = st.text_input("Account")
+    with col2:
+        custom_book = st.number_input("Book Amount", value=0.0)
+    with col3:
+        custom_tax = st.number_input("Tax Amount", value=0.0)
+    custom_type = st.selectbox("Adjustment Type", ["Temporary", "Permanent"])
+    custom_category = st.text_input("M-1 Category", value="Other")
+    submitted = st.form_submit_button("➕ Add Adjustment")
+    if submitted:
+        new_entry = {
+            'Account': custom_account,
+            'Book Amount': custom_book,
+            'Tax Amount': custom_tax,
+            'Adjustment': custom_book - custom_tax,
+            'Adjustment Type': custom_type,
+            'M-1 Category': custom_category
+        }
 
-    if adj_rows:
-        adj_df = pd.DataFrame(adj_rows)
-        st.session_state.adj_df = adj_df
+        # Append to adj_df if exists or create new
+        if "adj_df" in st.session_state:
+            st.session_state.adj_df = pd.concat([st.session_state.adj_df, pd.DataFrame([new_entry])], ignore_index=True)
+        else:
+            st.session_state.adj_df = pd.DataFrame([new_entry])
+
         auto_save_client_data()
-        st.dataframe(adj_df)
+        st.success("✅ Custom M-1 Adjustment added and saved.")
+        st.rerun()
+
 
 # 4. Review/Edit Lacerte Mapping
 if menu == "Review/Edit Lacerte Mapping" and "tb_df" in st.session_state and "adj_df" in st.session_state:
