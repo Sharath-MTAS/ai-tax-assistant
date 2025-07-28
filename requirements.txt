@@ -1,6 +1,7 @@
 streamlit
 streamlit-option-menu
 pandas
+openpyxl
 openai
 python-dotenv
 scikit-learn
